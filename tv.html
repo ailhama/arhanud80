@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Layar Monitor — Penerima Tamu HUT ke-80 Arhanud</title>
+<!--
+  HALAMAN LAYAR TV / MONITOR (tv.html) — v7.11
+  Buka di browser TV / laptop-HDMI / Chromecast / HP:
+    https://undangan.arhanud80.online/tv.html
+
+  PERINTAH LAYAR (ANTI-DUPLIKASI ANTAR PETUGAS):
+    tv.html               -> LAYAR TV PUSAT : menampilkan SEMUA tamu dari semua POS
+    tv.html?pg=PUSAT      -> sama dengan di atas (bentuk eksplisit)
+    tv.html?pg=POS1       -> HANYA tamu yang diterima POS1   (ganti: POS2, POS3, POS4)
+    tv.html?pg=NAMA       -> HANYA tamu yang diterima petugas dengan POS "NAMA"
+  PENTING: nilai ?pg= harus SAMA PERSIS dengan pilihan POS di halaman Petugas.
+  TV di meja POS1 memakai ?pg=POS1, TV di meja POS2 memakai ?pg=POS2, dst.
+  => setiap TV hanya menampilkan tamu di mejanya sendiri, tidak pernah duplikat.
+
+  Sumber data: backend mandiri (tvData) — polling otomatis tiap 4 detik.
+  Setelah petugas scan + check-in, nama tamu muncul otomatis di layar ini
+  selama 30 detik (v7.20; dulu 10 — terlalu cepat), atau sampai petugas mulai aksi
+  berikutnya (cari/scan lagi) pada tab di browser yang sama, lalu kembali standby.
+-->
+<meta name="theme-color" content="#080B09">
+<link rel="icon" href="logo.png" type="image/png">
+<link rel="preload" href="assets/fonts/barlow-condensed.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/api.js"></script>
+</head>
+<body class="monitor">
+<div class="tv">
+
+  <!-- ===== BARIS ATAS: mode (perintah layar), jumlah, jam, status koneksi ===== -->
+  <header class="top"><a class="brand" href="index.html" aria-label="Arhanud — kembali ke portal"><img src="logo.png" width="52" height="52" alt="Lambang Arhanud"><span><strong>ARHANUD</strong><small>TNI ANGKATAN DARAT</small></span></a>
+    <div class="mode">
+      <span class="tt" id="modeTitik">LAYAR TV PUSAT</span>
+      <span class="ss" id="modeSub">Menampilkan semua POS · tidak ada duplikasi</span>
+    </div>
+    <div class="tamutiba">TAMU TIBA DI LOKASI<br><b id="tot">0</b></div>
+    <div class="jam">
+      <div class="t" id="jamt">--:--</div>
+      <div class="d" id="jamd"></div>
+    </div>
+    <span class="cn wait" id="cn"><span class="dot"></span><span id="cnTxt">MENGHUBUNGKAN…</span></span>
+  </header>
+
+  <!-- ===== LAYAR UTAMA ===== -->
+  <main class="layar" id="layar">
+
+    <!-- IDLE / STANDBY -->
+    <div class="view" id="idle">
+      <img class="logo" src="logo.png" alt="Logo Pussenarhanud" onerror="this.style.display='none'">
+      <div class="kecil">SELAMAT DATANG DI</div>
+      <div class="jumbo">PUSSENARHANUD</div>
+      <div class="orn"><div class="ln"></div><div class="dm">◆</div><div class="ln r"></div></div>
+      <div class="kotak">
+        <div class="atas">SILAKAN SCAN KARTU QR</div>
+        <div class="nomor">DI MEJA PENERIMA</div>
+      </div>
+      <div class="idle-msg" id="idleMsg">Petugas akan memandu Anda ke meja…</div>
+      <div class="jam2" id="jamBig">--:--</div>
+      <div class="tgl2" id="tglBig"></div>
+    </div>
+
+    <!-- TAMU BARU CHECK-IN -->
+    <div class="view off" id="tamu">
+      <img class="logo" src="logo.png" alt="Logo Pussenarhanud" onerror="this.style.display='none'">
+      <div class="kecil">SELAMAT DATANG DI PUSSENARHANUD</div>
+      <div class="orn"><div class="ln"></div><div class="dm">◆</div><div class="ln r"></div></div>
+      <div class="kotak" id="kotakTamu">
+        <div class="atas" id="atasTamu">SILAKAN MENUJU</div>
+        <div class="nomor"><span id="meja">—</span></div>
+      </div>
+      <div class="warn" id="warnMeja">⚠ MEJA BELUM DIATUR — HUBUNGI KOORDINATOR</div>
+      <div class="nama" id="namaTamu" aria-live="polite"></div>
+      <div class="pangkuan" id="istriTamu"></div>
+      <div class="info" id="infoTamu"></div>
+    </div>
+  </main>
+
+  <!-- ===== BARIS BAWAH (selalu tampil) ===== -->
+  <div class="foot">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2m1-15a3 3 0 0 1 0 6m2 4a5 5 0 0 1 3 5"/></svg>
+    <div class="ft"><b>PENERIMA TAMU</b><br>SIAP MELAYANI ANDA</div>
+  </div>
+</div>
+
+<div class="flashbox" id="flashBox"></div>
+<button class="snd" id="sndHint" onclick="bukaSuara()">Aktifkan suara</button>
+
+<script>
+/* ============================================================
+   LAYAR TV v7.11 — polling tvData tiap 4 detik
+   PERINTAH LAYAR (anti-duplikasi):
+     tv.html              -> PUSAT (semua POS)
+     tv.html?pg=POS1      -> hanya tamu POS1 (dst.)
+   PENTING: nilai PG harus SAMA PERSIS dengan POS di Petugas.
+   ============================================================ */
+var $h = function(id){ return document.getElementById(id); };
+function qs(name){
+  try{ return new URLSearchParams(location.search).get(name) || ""; }catch(e){ return ""; }
+}
+
+/* ---- MODE/PERINTAH LAYAR ---- */
+var PG = qs("pg") || qs("id") || "";
+var PUSAT = (!PG || PG.toUpperCase() === "PUSAT" || PG.toUpperCase() === "SEMUA");
+var MODE = PUSAT ? "PUSAT" : PG;
+function tulisMode(){
+  var t = $h("modeTitik"), s = $h("modeSub");
+  if (PUSAT){
+    t.textContent = "LAYAR TV PUSAT";
+    s.textContent = "Menampilkan semua POS · tanpa duplikasi antar petugas";
+  } else {
+    t.textContent = "LAYAR POS · " + MODE;
+    s.textContent = "Hanya tamu yang discan di " + MODE;
+  }
+  document.title = "Layar Monitor — " + (PUSAT ? "TV PUSAT" : MODE) + " · Penerima Tamu";
+}
+
+/* ---- STATUS ---- */
+var TERAKHIR = null;   // kunci tamu yang sedang tampil
+var TAMPAIL  = 0;      // kapan mulai tampil
+var DURASI   = 30000;  // v7.20: 30 detik (dulu 10 — terlalu cepat), lalu kembali standby
+var KOTA = "Asia/Jakarta";
+var GAGAL = 0;
+var TICK_BUSY = false; /* TV-TICK-GUARD-v7.21: cegah request menumpuk */
+
+/* ---- JAM (jalan terus walau server mati) ---- */
+function pad(n){ return String(n).padStart(2,"0"); }
+function jamUpdate(){
+  var d = new Date();
+  try{
+    var s = new Intl.DateTimeFormat("id-ID", { timeZone: KOTA, hour:"2-digit", minute:"2-digit", hour12:false }).format(d);
+    var tgl = new Intl.DateTimeFormat("id-ID", { timeZone: KOTA, weekday:"long", day:"numeric", month:"long", year:"numeric" }).format(d);
+    var jt = $h("jamt"); if (jt) jt.textContent = s;
+    var jd = $h("jamd"); if (jd) jd.textContent = tgl;
+    var jb = $h("jamBig"); if (jb) jb.textContent = s;
+    var tb = $h("tglBig"); if (tb) tb.textContent = tgl;
+  }catch(e){
+    var jt2 = $h("jamt"); if (jt2) jt2.textContent = pad(d.getHours()) + ":" + pad(d.getMinutes());
+  }
+}
+
+/* ---- STATUS KONEKSI (selalu terlihat di layar) ---- */
+function setCn(st, txt){
+  var c = $h("cn"), t = $h("cnTxt");
+  if (!c) return;
+  c.className = "cn " + st;
+  if (t) t.textContent = txt;
+}
+
+/* ---- SUARA 'DING-DONG' + KILATAN EMAS ---- */
+var ACTX = null, AUDIO_OK = false;
+function bunyi(){
+  try{
+    ACTX = ACTX || new (window.AudioContext || window.webkitAudioContext)();
+    if (ACTX.state === "suspended") ACTX.resume();
+    var t = ACTX.currentTime;
+    [880, 1174.66].forEach(function(f, i){
+      var o = ACTX.createOscillator(), g = ACTX.createGain();
+      o.type = "sine"; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + i * 0.14);
+      g.gain.exponentialRampToValueAtTime(0.25, t + i * 0.14 + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.14 + 0.5);
+      o.connect(g); g.connect(ACTX.destination);
+      o.start(t + i * 0.14); o.stop(t + i * 0.14 + 0.55);
+    });
+  }catch(e){}
+}
+function bukaSuara(){
+  try{
+    ACTX = ACTX || new (window.AudioContext || window.webkitAudioContext)();
+    if (ACTX.state === "suspended") ACTX.resume();
+    AUDIO_OK = true;
+    var h = $h("sndHint"); if (h) h.classList.add("hide");
+    bunyi();
+  }catch(e){}
+}
+document.addEventListener("pointerdown", function(){ if (!AUDIO_OK) bukaSuara(); });
+document.addEventListener("touchstart", function(){ if (!AUDIO_OK) bukaSuara(); });
+function kedip(){
+  var fb = $h("flashBox");
+  if (fb){ fb.classList.remove("on"); void fb.offsetWidth; fb.classList.add("on"); }
+}
+
+/* ---- TAMPILKAN TAMU ---- */
+function tampilTamu(g, total){
+  try{
+    var key = g.token + "|" + (g.waktu || "");
+    TERAKHIR = key; TAMPAIL = Date.now();
+    var idle = $h("idle"), tamu = $h("tamu");
+    if (idle) idle.classList.add("off");
+    if (tamu) tamu.classList.remove("off");
+
+    var punyaMeja = g.meja_utama && g.meja_utama !== "—" && g.meja_utama !== "";
+    var mejaIstri = g.meja_istri && g.meja_istri !== "—" && g.meja_istri !== "";
+
+    var kt = $h("kotakTamu");
+    if (kt){ kt.classList.remove("pulse"); void kt.offsetWidth; kt.classList.add("pulse"); }
+
+    var at = $h("atasTamu"), mj = $h("meja"), wm = $h("warnMeja");
+    if (punyaMeja || mejaIstri){
+      if (at) at.textContent = "SILAKAN MENUJU";
+      if (mj){ mj.textContent = punyaMeja ? g.meja_utama : (mejaIstri ? g.meja_istri : "—"); }
+      if (wm) wm.classList.remove("on");
+    } else {
+      // MEJA KOSONG: TIDAK menghambat — tampilkan status yang jelas, tetap check-in.
+      if (at) at.textContent = "MEJA TAMU";
+      if (mj) mj.textContent = "⏳";
+      if (wm) wm.classList.add("on");
+    }
+
+    var nm = $h("namaTamu"); if (nm) nm.textContent = g.nama || "";
+    var st = $h("istriTamu");
+    if (st){
+      if (mejaIstri && mejaIstri !== g.meja_utama){
+        st.textContent = "💐 Pendamping / Istri → MEJA " + g.meja_istri;
+        st.style.display = "block";
+      } else { st.textContent = ""; st.style.display = "none"; }
+    }
+    var inf = $h("infoTamu");
+    if (inf){
+      var bagian = [];
+      if (g.gender) bagian.push(g.gender);
+      if (g.jumlah) bagian.push(g.jumlah + " orang");
+      bagian.push("HUT ke-80 Arhanud");
+      if (g.waktu) bagian.push("Check-in " + g.waktu);
+      if (g.petugas) bagian.push("Diterima " + g.petugas);
+      inf.textContent = bagian.join(" · ");
+    }
+    var tt = $h("tot"); if (tt) tt.textContent = total;
+    bunyi(); kedip();
+  }catch(e){ /* jangan pernah mematikan layar */ }
+}
+
+/* ---- KEMBALI STANDBY ---- */
+function setIdle(teks){
+  try{
+    var idle = $h("idle"), tamu = $h("tamu");
+    if (tamu) tamu.classList.add("off");
+    if (idle) idle.classList.remove("off");
+    var im = $h("idleMsg");
+    if (im) im.textContent = teks || (PUSAT
+      ? "Petugas akan memandu Anda ke meja…"
+      : "Menunggu tamu discan oleh " + MODE + "…");
+  }catch(e){}
+}
+
+/* ---- POLLING ---- */
+function tick(){
+  if (TICK_BUSY) return; // polling sebelumnya belum selesai — lewati
+  TICK_BUSY = true;
+  try{
+    google.script.run
+      .withSuccessHandler(function(j){
+        TICK_BUSY = false;
+        if (j && j.ok){
+          GAGAL = 0;
+          setCn("ok", "● LIVE — DIUPDATE " + new Date().toLocaleTimeString("id-ID"));
+          var rows = (j.rows || []).filter(function(g){ return g && g.token; });
+          if (rows.length){
+            var g = rows[0];
+            var key = g.token + "|" + (g.waktu || "");
+            if (key !== TERAKHIR){
+              tampilTamu(g, j.total != null ? j.total : rows.length);
+            } else if (Date.now() - TAMPAIL > DURASI){
+              setIdle();
+            }
+          } else {
+            setIdle();
+          }
+        } else {
+          GAGAL++;
+          setCn("bad", "!! SERVER TIDAK MERESPONS — MENCOBA LAGI OTOMATIS");
+        }
+      })
+      .withFailureHandler(function(e){
+        TICK_BUSY = false;
+        GAGAL++;
+        setCn("bad", "!! TIDAK TERHUBUNG — MENCOBA LAGI OTOMATIS");
+      })
+      .tvData(PUSAT ? "" : MODE);
+  }catch(e){
+    TICK_BUSY = false;
+    setCn("bad", "!! ERROR — MENCOBA LAGI OTOMATIS");
+  }
+}
+
+/* ---- SINYAL STANDBY DARI DASHBOARD PETUGAS v7.20 (tab/browser sama) ---- */
+/* TV-SINKRON-v7.20 */
+window.addEventListener("storage", function(ev){
+  try{
+    if (PUSAT) return; // TV pusat hanya ikut timeout/check-in baru
+    if (!ev.key || ev.key !== "tvSync_" + MODE) return;
+    var s = JSON.parse(ev.newValue || "{}");
+    if (s && s.aksi === "standby") setIdle();
+  }catch(e){}
+});
+
+tulisMode();
+jamUpdate(); setInterval(jamUpdate, 1000);
+setCn("wait", "MENGHUBUNGKAN…");
+tick(); setInterval(tick, 4000);
+</script>
+</body>
+</html>

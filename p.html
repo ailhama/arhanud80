@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panitia — Input Tamu &amp; Kirim Undangan</title>
+<meta name="theme-color" content="#080B09">
+<link rel="icon" href="logo.png" type="image/png">
+<link rel="preload" href="assets/fonts/barlow-condensed.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/api.js"></script>
+</head>
+<body class="dashboard ">
+<a class="skip-link" href="#main">Lewati ke konten utama</a>
+<div class="wrap">
+<header class="site-header"><a class="brand" href="index.html" aria-label="Arhanud — kembali ke portal"><img src="logo.png" width="52" height="52" alt="Lambang Arhanud"><span><strong>ARHANUD</strong><small>TNI ANGKATAN DARAT</small></span></a><nav class="nav" aria-label="Navigasi pengelola"><a class="on" aria-current="page" href="p.html">Panitia</a><a href="o.html">Koordinator</a><a href="t.html">Petugas</a><a href="index.html" aria-label="Kembali ke portal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m5-5-5 5 5 5"/></svg></a></nav></header>
+<main id="main">
+<div class="page-heading"><div class="eyebrow">Portal Panitia</div><h1>Kelola undangan</h1><p class="sub">HUT ke-80 Arhanud · 17 November 2026</p></div>
+<div class="access-shell"><section class="access-intro"><div class="eyebrow">HUT ke-80 Arhanud</div><h2>BERSAMA MENJAGA<br>KEJAYAAN.</h2><p>Kelola data tamu, format pesan, dan pengiriman undangan dalam satu tempat.</p><div class="intro-date">PUSSENARHANUD · CIMAHI · 2026</div></section>
+<form id="pinGate" class="card" onsubmit="event.preventDefault();masuk()"><div class="gate-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg></div><h2>AKSES PANITIA</h2><p class="gate-description">Selamat datang. Masukkan PIN Anda untuk melanjutkan.</p><label class="gate-label" for="pin">PIN panitia</label><input type="password" id="pin" placeholder="••••••" autocomplete="current-password"><button type="submit">Masuk ke dashboard <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button><p class="muted" id="pinStatus" role="status" aria-live="polite">Gunakan PIN yang diberikan oleh panitia acara.</p></form></div>
+  <div id="app" style="display:none">
+    <div class="stats" id="stats"></div>
+
+    <div class="card">
+      <h2 style="font-size:14px;color:#c7a85b;margin-bottom:8px">INPUT TAMU BARU</h2>
+      <div class="frow">
+        <input aria-label="Nama lengkap dan pangkat" id="tNama" placeholder="Nama lengkap &amp; pangkat *">
+        <input aria-label="Nomor WhatsApp" id="tHp" placeholder="No. WhatsApp (08xx / 62xx) *">
+        <input aria-label="Instansi atau organisasi" id="tOrg" placeholder="Instansi / org (opsional)">
+        <button onclick="tambah()">➕ TAMBAH</button>
+      </div>
+      <p class="muted">Hanya nama &amp; nomor HP. Jumlah rombongan &amp; status hadir <b>dikonfirmasi sendiri oleh tamu</b> melalui link undangan — bukan di sini.</p>
+    </div>
+
+    <div class="card">
+      <h2>UNDANGAN MELALUI WHATSAPP</h2>
+      <p class="muted">Klik <b>Kirim via WA</b> pada tamu: WhatsApp (aplikasi atau WhatsApp Web) terbuka dengan pesan undangan yang sudah terisi, lalu tekan <b>Kirim</b> di WhatsApp. Setelah tamu mengonfirmasi hadir, kartu QR langsung tampil di layar tamu. Tombol <b>Otomatis (Fonnte)</b> hanya berfungsi jika FONNTE_TOKEN sudah diatur.</p>
+      <p class="muted" id="stKirim" role="status" aria-live="polite">Status pengiriman tampil pada daftar tamu dan log. Di Vercel, biarkan halaman panitia terbuka sampai antrean massal selesai; antrean dilanjutkan saat halaman dibuka kembali.</p>
+      <p class="muted" id="waConfig" role="status"></p><button class="b2" onclick="kirimSemua()">Kirim semua otomatis (Fonnte)</button>
+      <label class="field-label" for="publicUrl">Alamat website publik</label>
+      <input id="publicUrl" type="url" placeholder="https://undangan.domain-anda.id" style="width:100%">
+      <p class="muted">Isi setelah backend ini dipasang di domain HTTPS. Alamat localhost hanya untuk pengujian di komputer ini.</p>
+      <button class="b2" onclick="simpanAlamat()">Simpan alamat website</button>
+      <p class="muted" id="stAlamat" role="status"></p>
+    </div>
+
+    <div class="card" style="overflow-x:auto">
+      <h2 style="font-size:14px;color:#c7a85b;margin-bottom:8px">FORMAT PESAN WA <span style="color:#a2afa4;font-weight:400">(bebas disesuaikan)</span></h2>
+      <div class="btnLine" style="gap:6px;flex-wrap:wrap;align-items:center">
+        <small style="color:#a2afa4">Sisipkan:</small>
+        <button class="b2" onclick="sisipTag('fBroadcast','{nama}')">{nama}</button>
+        <button class="b2" onclick="sisipTag('fBroadcast','{tanggal}')">{tanggal}</button>
+        <button class="b2" onclick="sisipTag('fBroadcast','{waktu}')">{waktu}</button>
+        <button class="b2" onclick="sisipTag('fBroadcast','{tempat}')">{tempat}</button>
+        <button class="b2" style="background:#1f3828;border-color:#426447;color:#b6d0b0" onclick="sisipTag('fBroadcast','{link}')">{link}</button>
+        <button class="b2" onclick="sisipTag('fBroadcast','{panitia}')">{panitia}</button>
+      </div>
+      <label class="muted" style="display:block;margin:8px 0 3px">1) PESAN UNDANGAN (broadcast) — <b>wajib memuat {link}</b>:</label>
+      <textarea aria-label="Format pesan undangan" id="fBroadcast" rows="7" style="width:100%;background:#111;color:#f5f5f2;border:1px solid #555;border-radius:9px;padding:10px;font-size:13px;font-family:Consolas,'Courier New',monospace;line-height:1.5"></textarea>
+      <label class="muted" style="display:block;margin:8px 0 3px">2) PESAN KARTU QR OTOMATIS — wajib memuat {link}:</label>
+      <textarea aria-label="Format pesan kartu QR" id="fQr" rows="5" style="width:100%;background:#111;color:#f5f5f2;border:1px solid #555;border-radius:9px;padding:10px;font-size:13px;font-family:Consolas,'Courier New',monospace;line-height:1.5"></textarea>
+      <div class="btnLine" style="margin-top:8px">
+        <button class="b2" onclick="previewFmt()"> PREVIEW PESAN</button>
+        <button class="b2" style="background:#1f3828;border-color:#426447;color:#b6d0b0" onclick="simpanFmt()"> SIMPAN FORMAT</button>
+        <button class="b2" onclick="resetFmt()">↩ KEMBALIKAN AWAL</button>
+      </div>
+      <p class="muted" id="stFmt">Format tersimpan berlaku untuk semua pengiriman berikutnya (undangan &amp; QR).</p>
+    </div>
+
+    <div class="card" style="overflow-x:auto">
+      <h2 style="font-size:14px;color:#c7a85b;margin-bottom:8px"> DAFTAR TAMU &amp; STATUS KIRIM</h2>
+      <div id="kosongBox" style="display:none;background:#302b1c;border:1px solid #9b8856;color:#dccb98;border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px">
+        <b>Belum ada tamu.</b> Tambahkan data melalui form di atas.
+      </div>
+      <table id="tbl"><thead><tr>
+        <th>Nama</th><th>No. WhatsApp</th><th>Status Kirim</th><th>Aksi</th>
+      </tr></thead><tbody></tbody></table>
+      <div style="margin-top:10px">
+
+        <button class="b2" style="border-color:#c0392b;color:#eba5a0" onclick="hapusSemua()"> HAPUS SEMUA TAMU</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:14px;color:#c7a85b;margin-bottom:8px"> LOG PENGIRIMAN</h2>
+      <div id="logBox"><p class="muted">Belum ada aktivitas.</p></div>
+    </div>
+  </div>
+
+</main><footer class="site-footer"><span>© 2026 Panitia HUT ke-80 Arhanud · Pussenarhanud TNI AD</span><span class="footer-motto">Bersama menjaga kejayaan</span></footer>
+</div>
+
+<script>
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function bukaApp(){ $("pinGate").style.display="none"; $("app").style.display="block"; muat(); muatStatus(); muatFormat(); if(!window.refreshTimer)window.refreshTimer=setInterval(muat,8000); }
+cekSesi("panitia", bukaApp);
+function masuk(){
+  google.script.run.withSuccessHandler(function(j){
+    if(j.ok){ bukaApp(); pasangKeluar(); }
+    else $("pinStatus").innerHTML='<span class="err">PIN salah.</span>';
+  }).withFailureHandler(function(e){
+    $("pinStatus").innerHTML='<span class="err">✗ '+esc((e&&e.message)||e)+'</span>';
+  }).cekPin("panitia", $("pin").value);
+}
+function badgeKirim(s){
+ var labels={manual:"Dikirim manual via WA",queued:"Dalam antrean",sending:"Sedang diproses",accepted:"Diterima layanan WA",failed:"Gagal — periksa log",unknown:"Belum pasti — periksa Fonnte",cancelled:"Dibatalkan"};
+ return '<span class="'+(s==="accepted"?"ok":s==="failed"||s==="unknown"?"err":"muted")+'">'+esc(labels[s]||"Belum dikirim")+'</span>';
+}
+function muat(){
+  google.script.run.withSuccessHandler(function(j){
+    var k=$("kosongBox"); if(k) k.style.display=j.empty?"block":"none";
+    var s=j.stats; $("stats").innerHTML=
+      '<div class="st"><b>'+s.total+'</b><span>Total Tamu</span></div>'+
+      '<div class="st"><b>'+s.terkirim+'</b><span>Terkirim</span></div>'+
+      '<div class="st"><b>'+s.gagal+'</b><span>✘ Gagal</span></div>'+
+      '<div class="st"><b>'+s.belum+'</b><span>Belum Kirim</span></div>';
+    $("tbl").getElementsByTagName("tbody")[0].innerHTML = j.rows.map(function(g){
+      return '<tr><td><b>'+esc(g.nama)+'</b><br><span class="muted">'+esc(g.org||"—")+'</span></td>'+
+        '<td>'+esc(g.hp)+'</td><td>'+badgeKirim(g.invite_status)+'<br><small>'+esc(g.invite_error||'')+'</small><br><small>QR: '+badgeKirim(g.qr_delivery)+'</small></td>'+
+        '<td><button onclick="kirimManual(\''+g.token+'\')">Kirim via WA</button> '+(g.hadir==="HADIR"?'<button onclick="kirimQrManual(\''+g.token+'\')">Kirim QR via WA</button> ':'')+'<button class="b2" onclick="kirimUlang(\''+g.token+'\',\''+encodeURIComponent(g.nama).replace(/'/g,"%27")+'\')">Otomatis (Fonnte)</button> <button class="b2" style="border-color:#c0392b;color:#eba5a0" onclick="hapusTamu(\''+g.token+'\',\''+encodeURIComponent(g.nama).replace(/'/g,"%27")+'\')"> Hapus</button></td></tr>';
+    }).join("") || '<tr><td colspan="4" class="muted">Belum ada tamu.</td></tr>';
+    window._g0 = j.rows[0] || null;
+    window._jmlTamu = j.rows.length;
+    muatLog();
+  }).withFailureHandler(function(e){
+    $("stats").innerHTML='<div class="st" style="grid-column:1/-1"><b style="color:#ff6b6b">✗</b><span>'+esc((e&&e.message)||e)+'</span></div>';
+  }).dataPanitia();
+}
+function muatStatus(){
+ google.script.run.withSuccessHandler(function(j){
+  window.cloudMode=!!j.cloud;
+  $("publicUrl").value=j.public_url;
+  $("stAlamat").textContent=j.public_url?"Alamat tersimpan. Pastikan domain ini menjalankan backend baru.":"Mode lokal. Pasang backend pada hosting HTTPS sebelum mengirim.";
+  $("waConfig").textContent=j.configured?"Token Fonnte terpasang. Pastikan nomor pengirim terhubung dan kuota tersedia di dashboard Fonnte.":"WhatsApp belum terhubung. Konfigurasikan FONNTE_TOKEN di pengaturan Vercel, atau file privat .local/whatsapp.json untuk server lokal. Jangan masukkan token pada alamat website.";
+ }).pengaturan();
+}
+function simpanAlamat(){google.script.run.withSuccessHandler(function(){muatStatus();}).withFailureHandler(function(e){$("stAlamat").textContent=e.message;}).simpanPengaturan($("publicUrl").value);}
+function muatLog(){
+  google.script.run.withSuccessHandler(function(l){
+    if(!l.length){ $("logBox").innerHTML='<p class="muted">Belum ada aktivitas pengiriman.</p>'; return; }
+    $("logBox").innerHTML = l.map(function(x){
+      return '<div style="padding:6px 0;border-bottom:1px solid #222;font-size:12px">'+
+        '<span class="muted">'+esc(x.waktu)+' ['+esc(x.jenis)+']</span><br>'+esc(x.pesan)+'</div>';
+    }).join("");
+  }).logBroadcast();
+}
+function tambah(){
+  var d={ nama:$("tNama").value.trim(), hp:$("tHp").value.trim(), org:$("tOrg").value.trim() };
+  if(!d.nama||!d.hp){ alert("Nama dan nomor WhatsApp wajib diisi."); return; }
+  try{ d.hp=normalisasiNomorWa(d.hp); }catch(e){ alert(e.message); return; }
+  if(!confirm("Tambah tamu:\n"+d.nama+"\n"+d.hp)) return;
+  google.script.run.withSuccessHandler(function(j){
+    if(j.ok){ alert("✅ Tamu ditambahkan: "+j.nama);
+      $("tNama").value=""; $("tHp").value=""; $("tOrg").value=""; muat(); }
+  }).withFailureHandler(function(e){ alert("✗ "+((e&&e.message)||e)); }).tambahTamu(d);
+}
+function normalisasiNomorWa(value){
+ var raw=String(value||"").trim();if(!/^\+?[\d ().-]+$/.test(raw))throw new Error("Nomor WhatsApp tidak valid.");
+ var n=raw.replace(/\D/g,"");if(n.indexOf("08")===0)n="62"+n.slice(1);else if(n.charAt(0)==="8")n="62"+n;
+ if(!/^[1-9]\d{7,14}$/.test(n)||(raw.charAt(0)!=="+"&&n.indexOf("628")!==0))throw new Error("Gunakan nomor lengkap 08…, 628…, atau +kode negara.");return n;
+}
+var sending=false, pumping=false;
+setInterval(function(){
+ if(!window.cloudMode||pumping||sending||$("app").style.display==="none")return;
+ pumping=true;
+ google.script.run.withSuccessHandler(function(){pumping=false;}).withFailureHandler(function(e){pumping=false;$("stKirim").textContent=e.message;}).prosesAntrean();
+},4000);
+function laporKirim(msg,isErr,done){ $("stKirim").textContent=msg; if(window.rpcToast) rpcToast(msg,isErr); if(done) muat(); }
+function kirimManual(token){ kirimViaWa('siapkanUndangan','tandaiDikirim',token,laporKirim); }
+function kirimQrManual(token){ kirimViaWa('siapkanQr','tandaiQrDikirim',token,laporKirim); }
+function kirimUlang(token){
+ if(sending||!confirm("Kirim undangan otomatis ke nomor tamu ini? Jika pernah diproses, periksa riwayat Fonnte dahulu agar tidak terkirim dua kali."))return;
+ sending=true;$("stKirim").textContent="Menambahkan ke antrean…";
+ google.script.run.withSuccessHandler(function(j){sending=false;$("stKirim").textContent=j.message;muat();}).withFailureHandler(function(e){sending=false;$("stKirim").textContent=e.message;}).kirimUndangan(token,true);
+}
+function kirimSemua(){
+ if(sending||!confirm("Kirim undangan otomatis kepada seluruh tamu yang belum pernah masuk antrean?"))return;
+ sending=true;
+ google.script.run.withSuccessHandler(function(j){sending=false;$("stKirim").textContent=j.message;muat();}).withFailureHandler(function(e){sending=false;$("stKirim").textContent=e.message;}).kirimSemua();
+}
+/* ===== HAPUS TAMU v7.13 (butuh fungsi backend hapusTamu/hapusSemuaTamu) ===== */
+function hapusTamu(token, nama){
+  nama=decodeURIComponent(nama||"tamu");
+  if(!confirm("HAPUS tamu ini secara permanen?\n"+nama+"\n\nData dihapus dari database dan tidak bisa dikembalikan.")) return;
+  google.script.run.withSuccessHandler(function(j){
+    if(j.ok){ alert(" Dihapus: "+(j.nama||nama)); }
+
+    else alert("✗ "+j.error);
+    muat();
+  }).withFailureHandler(function(e){ alert("✗ "+((e&&e.message)||e)); }).hapusTamu(token);
+}
+function hapusSemua(){
+  var n = window._jmlTamu||0;
+  if(!n){ alert("Daftar tamu sudah kosong."); return; }
+  if(!confirm("HAPUS SEMUA ("+n+" tamu) secara permanen?\n\nSeluruh daftar tamu di database akan dihapus.\nLanjut?")) return;
+  if(!confirm("YAKIN 100%? Ini tidak bisa dibatalkan.\nTekan OK untuk menghapus "+n+" tamu.")) return;
+  google.script.run.withSuccessHandler(function(j){
+    if(j.ok){ alert(" "+j.jumlah+" tamu dihapus. Database tamu kosong."); }
+
+    else alert("✗ "+j.error);
+    muat();
+  }).withFailureHandler(function(e){ alert("✗ "+((e&&e.message)||e)); }).hapusSemuaTamu();
+}
+/* ===== FORMAT PESAN WA ===== */
+function fmtErr(e){return esc((e&&e.message)||e);}
+function muatFormat(){
+  google.script.run.withSuccessHandler(function(j){
+    $("fBroadcast").value = j.broadcast; $("fQr").value = j.qr;
+  }).withFailureHandler(function(e){
+    $("stFmt").innerHTML='<span class="err">✗ '+fmtErr(e)+'</span>';
+  }).getWaFormat();
+}
+function sisipTag(id, tag){
+  var el = $(id);
+  var s = el.selectionStart || 0, e = el.selectionEnd || 0;
+  el.value = el.value.slice(0,s) + tag + el.value.slice(e);
+  el.focus();
+  try{ el.selectionStart = el.selectionEnd = s + tag.length; }catch(x){}
+}
+function fillTag(x, g){
+  var st = { nama:(g&&g.nama)||"Bpk/Ibu Contoh Tamu",
+             tanggal:"Selasa, 17 November 2026", waktu:"08.00 WIB — Selesai",
+             tempat:"Aula R. Harsoyo Mapussenarhanud, Cimahi",
+             panitia:"Panitia HUT ke-80 Arhanud",
+             link:($("publicUrl").value||location.origin)+"/k.html?t=CONTOH123" };
+  return String(x||"").replace(/\{nama\}/g,st.nama).replace(/\{tanggal\}/g,st.tanggal)
+    .replace(/\{waktu\}/g,st.waktu).replace(/\{tempat\}/g,st.tempat)
+    .replace(/\{link\}/g,st.link).replace(/\{panitia\}/g,st.panitia);
+}
+function previewFmt(){
+  var g = window._g0 || null;
+  var b = fillTag($("fBroadcast").value, g) || "(kosong)";
+  var q = fillTag($("fQr").value, g) || "(kosong)";
+  confirm("PREVIEW PESAN UNDANGAN:\n\n" + b + "\n\n———————\n\nPREVIEW PESAN KARTU QR:\n\n" + q);
+}
+function simpanFmt(){
+  $("stFmt").textContent="⏳ Menyimpan format…";
+  google.script.run.withSuccessHandler(function(j){
+    $("stFmt").innerHTML = j.ok
+      ? '<span class="ok">✔ Format tersimpan — berlaku untuk pengiriman berikutnya.</span>'
+      : '<span class="err">✗ '+esc(j.error)+'</span>';
+  }).withFailureHandler(function(e){
+    $("stFmt").innerHTML='<span class="err">✗ '+fmtErr(e)+'</span>';
+  }).saveWaFormat($("fBroadcast").value, $("fQr").value);
+}
+function resetFmt(){
+  if(!confirm("Kembalikan format pesan WA ke bawaan sistem?")) return;
+  google.script.run.withSuccessHandler(function(j){
+    if(j.ok){ muatFormat(); $("stFmt").textContent="Format dikembalikan ke bawaan."; }
+  }).withFailureHandler(function(e){
+    $("stFmt").innerHTML='<span class="err">✗ '+fmtErr(e)+'</span>';
+  }).resetWaFormat();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+.local
+.env
+.env.*
+!.env.example
+.git
+__pycache__
+tests

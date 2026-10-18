@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Koordinator — Kontrol Semua</title>
+<meta name="theme-color" content="#080B09">
+<link rel="icon" href="logo.png" type="image/png">
+<link rel="preload" href="assets/fonts/barlow-condensed.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/site.css">
+<script src="assets/api.js"></script>
+</head>
+<body class="dashboard coordinator">
+<a class="skip-link" href="#main">Lewati ke konten utama</a>
+<div class="wrap">
+<header class="site-header"><a class="brand" href="index.html" aria-label="Arhanud — kembali ke portal"><img src="logo.png" width="52" height="52" alt="Lambang Arhanud"><span><strong>ARHANUD</strong><small>TNI ANGKATAN DARAT</small></span></a><nav class="nav" aria-label="Navigasi pengelola"><a href="p.html">Panitia</a><a class="on" aria-current="page" href="o.html">Koordinator</a><a href="t.html">Petugas</a><a href="index.html" aria-label="Kembali ke portal"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5m5-5-5 5 5 5"/></svg></a></nav></header>
+<main id="main">
+<div class="page-heading"><div class="eyebrow">Portal Koordinator</div><h1>Koordinasi acara</h1><p class="sub">HUT ke-80 Arhanud · 17 November 2026 <span class="live"><span class="dot"></span>Pembaruan setiap 15 detik</span></p></div>
+<div class="access-shell"><section class="access-intro"><div class="eyebrow">HUT ke-80 Arhanud</div><h2>BERSAMA MENJAGA<br>KEJAYAAN.</h2><p>Pantau kehadiran tamu dan siapkan penempatan meja dengan lebih teratur.</p><div class="intro-date">PUSSENARHANUD · CIMAHI · 2026</div></section>
+<form id="pinGate" class="card" onsubmit="event.preventDefault();masuk()"><div class="gate-icon"><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></svg></div><h2>AKSES KOORDINATOR</h2><p class="gate-description">Selamat datang. Masukkan PIN Anda untuk melanjutkan.</p><label class="gate-label" for="pin">PIN koordinator</label><input type="password" id="pin" placeholder="••••••" autocomplete="current-password"><button type="submit">Masuk ke dashboard <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14m-5-5 5 5-5 5"/></svg></button><p class="muted" id="pinStatus" role="status" aria-live="polite">Gunakan PIN yang diberikan oleh panitia acara.</p></form></div>
+  <div id="app" style="display:none">
+    <div class="stats" id="stats"></div>
+
+    <div class="card" id="cardBaru">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        <h2 style="font-size:14px;color:#c7a85b">CHECK-IN TERBARU — <span class="muted">tamu muncul otomatis begitu petugas check-in</span></h2>
+        <span class="badge-baru" id="badgeBaru" style="display:none;background:#c7a85b;color:#111;border-radius:999px;padding:2px 10px;font-size:12px;font-weight:900">BARU</span>
+      </div>
+      <div id="baruBox"><p class="muted">Belum ada tamu check-in.</p></div>
+      <div id="beHint" hidden></div>
+    </div>
+
+    <div class="card" style="overflow-x:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px">
+        <h2 style="font-size:14px;color:#c7a85b;margin-bottom:0"> ATUR MEJA TAMU — <span class="muted">semua tamu, tanpa perlu konfirmasi HADIR</span></h2>
+        <button class="b2" onclick="susunMeja()" title="Isi meja_utama 1..N otomatis untuk tamu yang belum punya meja"> SUSUN MEJA OTOMATIS</button>
+      </div>
+      <p class="muted" style="margin-bottom:8px">Isi kode meja (contoh: B03 = zona Bapak, I03 = zona Istri) lalu klik SIMPAN. Kosongkan untuk menghapus.</p>
+      <table id="tblMeja"><thead><tr>
+        <th>Nama</th><th>Jumlah</th><th>Meja Utama</th><th>Meja Istri</th><th>Aksi</th>
+      </tr></thead><tbody></tbody></table>
+      <p class="muted" id="stMeja" style="margin-top:6px">-</p>
+    </div>
+
+    <div class="card" style="overflow-x:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        <h2 style="font-size:14px;color:#c7a85b"> REKAP SEMUA TAMU</h2>
+        <button class="b2" onclick="muat()"> MUAT ULANG</button>
+      </div>
+      <div id="kosongBox" style="display:none;background:#302b1c;border:1px solid #9b8856;color:#dccb98;border-radius:10px;padding:12px;margin-bottom:10px;font-size:13px">
+        <b>Daftar tamu masih kosong</b> — panitia harus input tamu dulu di halaman Panitia.
+      </div>
+      <table id="tbl"><thead><tr>
+        <th>Nama</th><th>Kategori</th><th>Jumlah</th><th>Meja</th>
+        <th>Status</th><th>Check-in</th><th>Aksi</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
+
+    <div class="card">
+      <h2 style="font-size:14px;color:#c7a85b;margin-bottom:8px"> LOG AKTIVITAS</h2>
+      <div id="logBox"><p class="muted">Belum ada aktivitas.</p></div>
+    </div>
+  </div>
+
+</main><footer class="site-footer"><span>© 2026 Panitia HUT ke-80 Arhanud · Pussenarhanud TNI AD</span><span class="footer-motto">Bersama menjaga kejayaan</span></footer>
+</div>
+
+<script>
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function bukaApp(){ $("pinGate").style.display="none"; $("app").style.display="block"; muat(); if(!window.refreshTimer)window.refreshTimer=setInterval(muat, 15000); }
+cekSesi("koordinator", bukaApp);
+function masuk(){
+  google.script.run.withSuccessHandler(function(j){
+    if(j.ok){ bukaApp(); pasangKeluar(); }
+    else $("pinStatus").innerHTML='<span class="err">PIN salah.</span>';
+  }).withFailureHandler(function(e){
+    $("pinStatus").innerHTML='<span class="err">✗ '+esc((e&&e.message)||e)+'</span>';
+  }).cekPin("koordinator", $("pin").value);
+}
+function stBadge(h){
+  if(h==="HADIR") return '<span class="hadir">✔ HADIR</span>';
+  if(h==="TIDAK HADIR") return '<span class="tidak">✘ TIDAK HADIR</span>';
+  return '<span class="blm">belum konfirmasi</span>';
+}
+function statusWa(s){return ({manual:"Dikirim manual via WA",queued:"Dalam antrean",sending:"Sedang diproses",accepted:"Diterima layanan WA",failed:"Gagal — periksa log",unknown:"Belum pasti — periksa Fonnte",cancelled:"Dibatalkan"})[s]||"Belum dikirim";}
+function mejaBadge(g){
+  var a = g.meja_utama ? '<span class="meja">'+esc(g.meja_utama)+'</span>' : '';
+  var b = g.meja_istri ? '<span class="meja" style="background:#34351f">'+esc(g.meja_istri)+'</span>' : '';
+  return (a||b) ? (a+' '+(b?'+ '+b:'')) : '<span class="muted">belum diatur</span>';
+}
+function muat(){
+  google.script.run.withSuccessHandler(function(j){
+    var k=$("kosongBox"); if(k) k.style.display=j.empty?"block":"none";
+    var s=j.stats; $("stats").innerHTML=
+      '<div class="st"><b>'+s.total+'</b><span>Total Tamu</span></div>'+
+      '<div class="st"><b>'+s.terkirim+'</b><span>Diterima layanan WA</span></div>'+
+      '<div class="st"><b>'+s.hadir+'</b><span>Konfirmasi Hadir</span></div>'+
+      '<div class="st"><b>'+s.orang+'</b><span>Total Orang</span></div>'+
+      '<div class="st"><b>'+s.tidak+'</b><span>Tidak Hadir</span></div>'+
+      '<div class="st"><b>'+s.belumk+'</b><span>Belum Konfirmasi</span></div>'+
+      '<div class="st"><b>'+s.checkin+'</b><span>Sudah Datang</span></div>';
+
+    // Tabel atur meja v7.16: SEMUA tamu (tanpa syarat konfirmasi HADIR); HADIR di atas
+    var semua = j.rows.slice().sort(function(a,b){
+      var rank = function(h){ return h==="HADIR" ? 0 : (h==="TIDAK HADIR" ? 2 : 1); };
+      return (rank(a.hadir)-rank(b.hadir)) || String(a.nama||"").localeCompare(String(b.nama||""));
+    });
+    var tanpaMeja = semua.filter(function(g){ return !g.meja_utama; }).length;
+    $("stMeja").textContent = semua.length ? ("Menunggu meja: "+tanpaMeja+" tamu dari "+semua.length+" total (termasuk yang belum konfirmasi).") : "Belum ada tamu.";
+    $("tblMeja").getElementsByTagName("tbody")[0].innerHTML = semua.map(function(g){
+      var extra = Math.max(0, (g.jumlah||1)-2);
+      return '<tr><td><b>'+esc(g.nama)+'</b><br><span class="muted">'+esc(g.org||"")+'</span><br>'+stBadge(g.hadir)+'</td>'+
+        '<td>'+(g.jumlah||1)+(extra?'<br><span class="muted">+'+extra+' tnp kursi</span>':'')+'</td>'+
+        '<td><input id="mu_'+g.token+'" value="'+esc(g.meja_utama||"")+'" placeholder="B01"></td>'+
+        '<td><input id="mi_'+g.token+'" value="'+esc(g.meja_istri||"")+'" placeholder="I01"></td>'+
+        '<td><button onclick="simpanMeja(\''+g.token+'\',\''+encodeURIComponent(g.nama).replace(/'/g,"%27")+'\')"> SIMPAN</button></td></tr>';
+    }).join("") || '<tr><td colspan="5" class="muted">Belum ada tamu.</td></tr>';
+
+    // Rekap semua
+    $("tbl").getElementsByTagName("tbody")[0].innerHTML = j.rows.map(function(g){
+      return '<tr><td><b>'+esc(g.nama)+'</b><br><span class="muted">'+esc(g.org||"")+'</span></td>'+
+        '<td>'+esc(g.kategori)+'</td>'+
+        '<td>'+(g.hadir==="HADIR"?(g.jumlah||1):'<span class="muted">—</span>')+'</td>'+
+        '<td>'+mejaBadge(g)+'</td>'+
+        '<td>'+stBadge(g.hadir)+'<br><span class="muted">'+esc(statusWa(g.invite_status))+"<br>QR: "+esc(statusWa(g.qr_delivery))+"<br>"+esc(g.qr_error||"")+'</span></td>'+
+        '<td>'+(g.checkin_waktu?esc(g.checkin_waktu):'<span class="muted">—</span>')+'</td>'+
+        '<td>'+(g.hadir==="HADIR"?'<button onclick="qrManual(\''+g.token+'\')">Kirim QR via WA</button> <button class="b2" onclick="qrUlang(\''+g.token+'\')">QR otomatis (Fonnte)</button> ':'<span class="muted">QR tersedia setelah tamu konfirmasi hadir</span><br>')+'<button class="b2" style="border-color:#c0392b;color:#eba5a0" onclick="hapusTamu(\''+g.token+'\',\''+encodeURIComponent(g.nama).replace(/'/g,"%27")+'\')">Hapus</button></td></tr>';
+    }).join("") || '<tr><td colspan="7" class="muted">Belum ada tamu.</td></tr>';
+    // Feed check-in real-time (langsung dari hasil checkinTamu petugas)
+    var BE_BARU = !!j.terbaru; // backend v7.11?
+    var baru = j.terbaru;
+    if (!baru){ // backend lama: susun dari rekap (tetap jalan, tanpa notifikasi)
+      baru = j.rows.filter(function(g){ return g.checkin_waktu; })
+        .sort(function(a,b){ return a.checkin_waktu < b.checkin_waktu ? 1 : -1; })
+        .slice(0,8).map(function(g){ return { nama:g.nama, meja_utama:g.meja_utama,
+          meja_istri:g.meja_istri, waktu:g.checkin_waktu, petugas:g.petugas||"" }; });
+    }
+    var hint = $("beHint");
+    if (hint) hint.style.display = BE_BARU ? "none" : "block";
+    var bb = $("badgeBaru");
+    if (baru.length){
+      var lama = window.__JKADAR || 0;
+      var nBaru = Math.max(0, baru.length - lama);
+      if (nBaru > 0 && lama > 0){
+        if (bb){ bb.style.display="inline-block"; bb.textContent = "+"+nBaru+" BARU"; }
+        try{ bunyiKecil(); }catch(e){}
+      } else if (bb){ bb.style.display="none"; }
+      window.__JKADAR = baru.length;
+      $("baruBox").innerHTML = baru.map(function(t){
+        var mj = t.meja_utama ? "MEJA <b>"+esc(t.meja_utama)+"</b>" : '<span style="color:#ffb84d">MEJA BELUM DIATUR</span>';
+        var mi = (t.meja_istri && t.meja_istri!==t.meja_utama) ? ' · <span style="color:#c7a85b"> '+esc(t.meja_istri)+"</span>" : "";
+        return '<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #2a2a2a">'+
+          '<span style="font-size:22px">✅</span>'+
+          '<div style="flex:1;min-width:0"><b style="color:#fff">'+esc(t.nama)+'</b><br>'+
+          '<span class="muted">'+esc(t.waktu)+' · diterima '+(t.petugas?"POS <b>"+esc(t.petugas)+"</b>":"petugas")+'</span></div>'+
+          '<div style="text-align:right;font-size:13px">'+mj+mi+'</div></div>';
+      }).join("");
+    } else {
+      if (bb) bb.style.display="none";
+      window.__JKADAR = 0;
+      $("baruBox").innerHTML = '<p class="muted">Belum ada tamu check-in.</p>';
+    }
+    muatLog();
+  }).withFailureHandler(function(e){
+    $("stats").innerHTML='<div class="st" style="grid-column:1/-1"><b style="color:#ff6b6b">✗</b><span>'+esc((e&&e.message)||e)+'</span></div>';
+  }).dataKoordinator();
+}
+function bunyiKecil(){
+  try{
+    var A = window.__AX || new (window.AudioContext||window.webkitAudioContext)();
+    window.__AX = A;
+    if (A.state==="suspended") A.resume();
+    var t = A.currentTime, o = A.createOscillator(), g = A.createGain();
+    o.type="sine"; o.frequency.value=1046;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.12,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.4);
+    o.connect(g); g.connect(A.destination); o.start(t); o.stop(t+0.45);
+  }catch(e){}
+}
+function susunMeja(){
+  if (!confirm("Isi meja utama 1..N OTOMATIS untuk semua tamu HADIR yang belum punya meja?\n(Meja yang sudah diisi TIDAK diubah.)")) return;
+  google.script.run.withSuccessHandler(function(j){
+    if (j && j.ok && (j.jumlah||0) > 0) alert("✅ "+j.jumlah+" tamu diberi meja otomatis (1.."+(j.terisi||0)+").");
+    else if (j && j.ok) alert(" Tidak ada yang disusun.\n\nTamu yang diproses sudah memiliki meja. Atur meja manual per baris bila diperlukan.");
+    else alert("✗ "+((j&&j.error)||"Gagal menyusun meja."));
+    muat();
+  }).withFailureHandler(function(e){ alert("✗ "+(e&&e.message||e)); }).susunMejaOtomatis(true);
+}
+function simpanMeja(token, nama){
+  nama=decodeURIComponent(nama||"tamu");
+  var u = $("mu_"+token).value.trim().toUpperCase();
+  var i = $("mi_"+token).value.trim().toUpperCase();
+  google.script.run.withSuccessHandler(function(j){
+    alert(j.ok ? ("✅ "+nama+" → utama: "+(j.utama||"—")+" · istri: "+(j.pasangan||"—")) : "✗ "+j.error);
+    muat();
+  }).setMeja(token, u, i);
+}
+function muatLog(){
+  google.script.run.withSuccessHandler(function(l){
+    if(!l.length){ $("logBox").innerHTML='<p class="muted">Belum ada aktivitas.</p>'; return; }
+    $("logBox").innerHTML = l.map(function(x){
+      return '<div style="padding:6px 0;border-bottom:1px solid #222;font-size:12px">'+
+        '<span class="muted">'+esc(x.waktu)+' ['+esc(x.jenis)+']</span><br>'+esc(x.pesan)+'</div>';
+    }).join("");
+  }).logBroadcast();
+}
+function qrManual(token){ kirimViaWa('siapkanQr','tandaiQrDikirim',token,function(msg,isErr,done){ rpcToast(msg,isErr); if(done) muat(); }); }
+function qrUlang(token){
+ if(!confirm("Kirim kartu QR melalui WhatsApp? Periksa riwayat layanan sebelum mengulang pengiriman."))return;
+ google.script.run.withSuccessHandler(function(j){rpcToast(j.message);muat();}).withFailureHandler(function(e){rpcToast(e.message,true);}).kirimQr(token,true);
+}
+/* ===== HAPUS TAMU v7.13 (butuh fungsi backend hapusTamu) ===== */
+function hapusTamu(token, nama){
+  nama=decodeURIComponent(nama||"tamu");
+  if(!confirm("HAPUS tamu ini secara permanen?\n"+nama+"\n\nData dihapus dari database dan tidak bisa dikembalikan.")) return;
+  google.script.run.withSuccessHandler(function(j){
+    if(j.ok){ alert(" Dihapus: "+(j.nama||nama)); }
+
+    else alert("✗ "+j.error);
+    muat();
+  }).withFailureHandler(function(e){ alert("✗ "+((e&&e.message)||e)); }).hapusTamu(token);
+}
+</script>
+</body>
+</html>

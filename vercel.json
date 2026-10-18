@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "python scripts/build_static.py",
+  "outputDirectory": "public",
+  "functions": { "api/rpc.py": { "maxDuration": 60, "excludeFiles": "{.local/**,tests/**,supabase/**,.git/**}" } },
+  "headers": [{ "source": "/(.*)", "headers": [
+    {"key":"Referrer-Policy","value":"no-referrer"},
+    {"key":"X-Content-Type-Options","value":"nosniff"},
+    {"key":"X-Frame-Options","value":"DENY"},
+    {"key":"Cache-Control","value":"no-store"}
+  ] }]
+}
